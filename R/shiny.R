@@ -14,6 +14,7 @@
 #' # first, create the yml file using use_auth0() function
 #'
 #' if (interactive()) {
+#'
 #'   # ui.R file
 #'   library(shiny)
 #'   library(auth0)
@@ -27,6 +28,7 @@
 #'   options(shiny.port = 8080)
 #'   shiny::runApp()
 #' }
+#'
 #' }
 #' @export
 auth0_ui <- function(ui, info) {
@@ -36,53 +38,35 @@ auth0_ui <- function(ui, info) {
   } else {
     if (missing(info)) info <- auth0_info()
     function(req) {
-      verify <- has_auth_code(
-        shiny::parseQueryString(req$QUERY_STRING),
-        info$state
-      )
+      verify <- has_auth_code(shiny::parseQueryString(req$QUERY_STRING), info$state)
       if (!verify) {
         if (grepl("error=unauthorized", req$QUERY_STRING)) {
           redirect <- sprintf("location.replace(\"%s\");", logout_url())
           shiny::tags$script(shiny::HTML(redirect))
         } else {
+
           params <- shiny::parseQueryString(req$QUERY_STRING)
           params$code <- NULL
           params$state <- NULL
 
-          # Reconstruct the query string
-          query <- paste(
+          query <- paste0("/?", paste(
             mapply(paste, names(params), params, MoreArgs = list(sep = "=")),
-            collapse = "&"
-          )
-          query <- if (query != "") paste0("?", query) else ""
-
-          # Preserve the original path (req$PATH_INFO) in the redirect URI
-          if (grepl("127.0.0.1", req$HTTP_HOST)) {
-            redirect_uri <- paste0(
-              "http://",
-              gsub("127.0.0.1", "localhost", req$HTTP_HOST),
-              req$PATH_INFO,
-              query
-            )
+            collapse = "&"))
+          if (!is.null(info$remote_url) && info$remote_url != "" && !getOption("auth0_local")) {
+            redirect_uri <- info$remote_url
           } else {
-            redirect_uri <- paste0(
-              "http://",
-              req$HTTP_HOST,
-              req$PATH_INFO,
-              query
-            )
+            if (grepl("127.0.0.1", req$HTTP_HOST)) {
+              redirect_uri <- paste0("http://", gsub("127.0.0.1", "localhost", req$HTTP_HOST, query))
+            } else {
+              redirect_uri <- paste0("http://", req$HTTP_HOST, query)
+            }
           }
           redirect_uri <<- redirect_uri
 
-          # Generate the Auth0 authorization URL
-          query_extra <- if (is.null(info$audience)) list() else
-            list(audience = info$audience)
+          query_extra <- if(is.null(info$audience)) list() else list(audience=info$audience)
           url <- httr::oauth2.0_authorize_url(
-            info$api,
-            info$app(redirect_uri),
-            scope = info$scope,
-            state = info$state,
-            query_extra = query_extra
+            info$api, info$app(redirect_uri), scope = info$scope, state = info$state,
+            query_extra=query_extra
           )
           redirect <- sprintf("location.replace(\"%s\");", url)
           shiny::tags$script(shiny::HTML(redirect))
@@ -112,12 +96,7 @@ auth0_server <- function(server, info) {
   } else {
     if (missing(info)) info <- auth0_info()
     function(input, output, session) {
-      shiny::isolate(auth0_server_verify(
-        session,
-        info$app,
-        info$api,
-        info$state
-      ))
+      shiny::isolate(auth0_server_verify(session, info$app, info$api, info$state))
       shiny::observeEvent(input[["._auth0logout_"]], logout())
       server(input, output, session)
     }
@@ -148,6 +127,7 @@ auth0_server <- function(server, info) {
 #'
 #' @export
 shinyAppAuth0 <- function(ui, server, config_file = NULL, ...) {
+
   disable <- getOption("auth0_disable")
   if (!is.null(disable) && disable) {
     shiny::shinyApp(ui, server, ...)
@@ -171,10 +151,8 @@ shinyAppAuth0 <- function(ui, server, config_file = NULL, ...) {
 #'
 #' @export
 shinyAuth0App <- function(ui, server, config_file = NULL) {
-  warning(
-    "`shinyAuth0App()` is soft-deprecated as of auth0 0.1.2.",
-    "Please use `shinyAppAuth0()` instead."
-  )
+  warning("`shinyAuth0App()` is soft-deprecated as of auth0 0.1.2.",
+          "Please use `shinyAppAuth0()` instead.")
   shinyAppAuth0(ui, server, config_file)
 }
 
@@ -221,12 +199,14 @@ shinyAuth0App <- function(ui, server, config_file = NULL) {
 #'   }
 #'   shinyAuth0App(ui, server, config_file)
 #' }
+#'
 #' }
+#'
 #'
 #' @export
 auth0_logout_url <- function(config_file = NULL, redirect_js = TRUE) {
-  stop(
-    "`auth0_logout_url()` is deprecated. ",
-    "See `?logoutButton()` to add a logout button in auth0 apps."
-  )
+
+  stop("`auth0_logout_url()` is deprecated. ",
+       "See `?logoutButton()` to add a logout button in auth0 apps.")
+
 }
