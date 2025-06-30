@@ -37,8 +37,7 @@ auth0_ui <- function(ui, info) {
     ui
   } else {
     if (missing(info)) info <- auth0_info()
-    function(req) {
-      verify <- has_auth_code(shiny::parseQueryString(req$QUERY_STRING), info$state)
+    function(req) {redirect_uri <- paste0("http://", gsub("127.0.0.1", "localhost", req$HTTP_HOST, query))      verify <- has_auth_code(shiny::parseQueryString(req$QUERY_STRING), info$state)
       if (!verify) {
         if (grepl("error=unauthorized", req$QUERY_STRING)) {
           redirect <- sprintf("location.replace(\"%s\");", logout_url())
@@ -56,7 +55,9 @@ auth0_ui <- function(ui, info) {
             redirect_uri <- info$remote_url
           } else {
             if (grepl("127.0.0.1", req$HTTP_HOST)) {
-              redirect_uri <- paste0("http://", gsub("127.0.0.1", "localhost", req$HTTP_HOST, query))
+              #redirect_uri <- paste0("http://", gsub("127.0.0.1", "localhost", req$HTTP_HOST, query))
+              redirect_uri <- paste0("http://", gsub("127.0.0.1", "localhost", req$HTTP_HOST), query)
+              
             } else {
               redirect_uri <- paste0("http://", req$HTTP_HOST, query)
             }
